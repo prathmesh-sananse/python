@@ -21,7 +21,7 @@ def index():
         WHERE b.name CONTAINS $search_term OR category.name CONTAINS $search_term OR region.name CONTAINS $search_term OR relevance.name CONTAINS $search_term OR target.name CONTAINS $search_term
         RETURN b.name AS name, b.url AS url, category.name AS category, 
                b.publish_date AS publish_date, b.expire_date AS expire_date, 
-               region.name AS region, collect(relevance.name) AS relevance, 
+               region.name AS region, relevance.name AS relevance, 
                collect(target.name) AS target_audience
         """
         data = session.run(query, search_term=search_term)
@@ -55,7 +55,7 @@ def index():
         MATCH (b)-[:HAS_RELEVANCE]->(relevance:Relevance)
         MATCH (b)-[:TARGETS]->(target:TargetAudience)
         RETURN b.name AS name, b.url AS url, category.name AS category, b.publish_date AS publish_date,
-                b.expire_date AS expire_date, region.name AS region, collect(relevance.name) AS relevance,
+                b.expire_date AS expire_date, region.name AS region, relevance.name AS relevance,
                 collect(target.name) AS target_audience
         """
         data = session.run(query)
