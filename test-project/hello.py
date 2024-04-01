@@ -11,20 +11,22 @@ session = driver.session()
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        search_term = request.form.get('search_term')
+        search_terms = [term.strip() for term in request.form.get('search_term').split(",") if term.strip().lower() != "and"]
         # Constructing dynamic Cypher query based on user input
         query = """
         MATCH (b:Blog)-[:BELONGS_TO]->(category:Category)
         MATCH (b)-[:BELONGS_TO_REGION]->(region:Region)
         MATCH (b)-[:HAS_RELEVANCE]->(relevance:Relevance)
         MATCH (b)-[:TARGETS]->(target:TargetAudience)
-        WHERE b.name CONTAINS $search_term OR category.name CONTAINS $search_term OR region.name CONTAINS $search_term OR relevance.name CONTAINS $search_term OR target.name CONTAINS $search_term
-        RETURN b.name AS name, b.url AS url, category.name AS category, 
-               b.publish_date AS publish_date, b.expire_date AS expire_date, 
-               region.name AS region, relevance.name AS relevance, 
-               collect(target.name) AS target_audience
+        WHERE all(term IN $search_terms WHERE
+        b.name CONTAINS term OR
+        category.name CONTAINS term OR
+        region.name CONTAINS term OR
+        relevance.name CONTAINS term OR
+        target.name CONTAINS term)
+        RETURN b.name AS name, b.url AS url, category.name AS category, b.publish_date AS publish_date, b.expire_date AS expire_date, region.name AS region, relevance.name AS relevance, collect(target.name) AS target_audience
         """
-        data = session.run(query, search_term=search_term)
+        data = session.run(query, search_terms=search_terms)
 
         # Convert Neo4j result to a list of dictionaries
         blogs = []
@@ -46,7 +48,10 @@ def index():
 
             blogs.append(blog)
 
+        blogs.sort(key=lambda x: x["name"])
+
         return render_template('index.html', blogs=blogs)
+    
     else:
         # If no search term is provided, display all blogs
         query = """
@@ -79,6 +84,8 @@ def index():
                 blog["target_audience"] = ", ".join(blog["target_audience"])
 
             blogs.append(blog)
+
+        blogs.sort(key=lambda x: x["name"])
 
         return render_template('index.html', blogs=blogs)
 
