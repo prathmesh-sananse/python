@@ -1,57 +1,61 @@
 from flask import Flask, render_template, request
 from collections import defaultdict
 from neo4j import GraphDatabase, basic_auth
-
+ 
 app = Flask(__name__)
-
+ 
 # Establish connection to Neo4j database
 driver = GraphDatabase.driver(uri='bolt://3.238.66.233:7687', auth=basic_auth("neo4j", "meal-signals-additives"))
 session = driver.session()
-
+ 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        search_terms = [term.strip() for term in request.form.get('search_term').split(",") if term.strip().lower() != "and"]
-        # Constructing dynamic Cypher query based on user input
-        query = """
-        MATCH (b:Blog)-[:BELONGS_TO]->(category:Category)
-        MATCH (b)-[:BELONGS_TO_REGION]->(region:Region)
-        MATCH (b)-[:HAS_RELEVANCE]->(relevance:Relevance)
-        MATCH (b)-[:TARGETS]->(target:TargetAudience)
-        WHERE all(term IN $search_terms WHERE
-        b.name CONTAINS term OR
-        category.name CONTAINS term OR
-        region.name CONTAINS term OR
-        relevance.name CONTAINS term OR
-        target.name CONTAINS term)
-        RETURN b.name AS name, b.url AS url, category.name AS category, b.publish_date AS publish_date, b.expire_date AS expire_date, region.name AS region, relevance.name AS relevance, collect(target.name) AS target_audience
-        """
-        data = session.run(query, search_terms=search_terms)
-
-        # Convert Neo4j result to a list of dictionaries
-        blogs = []
-        for record in data:
-            blog = {
-                "name": record["name"],
-                "url": record["url"],
-                "publish_date": record["publish_date"],
-                "expire_date": record["expire_date"],
-                "category": record["category"],
-                "region": record["region"],
-                "relevance": record["relevance"],
-                "target_audience": record["target_audience"]
-            }
-
-            # If target audience has multiple values, join them into a comma-separated string
-            if isinstance(blog["target_audience"], list) and len(blog["target_audience"]) > 1:
-                blog["target_audience"] = ", ".join(blog["target_audience"])
-
-            blogs.append(blog)
-
-        blogs.sort(key=lambda x: x["name"])
-
-        return render_template('index.html', blogs=blogs)
-    
+        try:
+            search_terms = [term.strip() for term in request.form.get('search_term').split(",") if term.strip().lower() != "and"]
+            print("Search Terms:", search_terms)  # Debugging: Print search terms
+            
+            # Constructing dynamic Cypher query based on user input
+            base_query = """
+            MATCH (b:Blog)-[:BELONGS_TO]->(category:Category)
+            MATCH (b)-[:BELONGS_TO_REGION]->(region:Region)
+            MATCH (b)-[:HAS_RELEVANCE]->(relevance:Relevance)
+            MATCH (b)-[:TARGETS]->(target:TargetAudience)
+            WHERE b.name CONTAINS $search_term OR
+            category.name CONTAINS $search_term OR
+            region.name CONTAINS $search_term OR
+            relevance.name CONTAINS $search_term OR
+            target.name CONTAINS $search_term
+            RETURN b.name AS name, b.url AS url, category.name AS category, b.publish_date AS publish_date, b.expire_date AS expire_date, region.name AS region, relevance.name AS relevance, collect(target.name) AS target_audience
+            """
+            all_blogs = []
+ 
+            for term in search_terms:
+                data = session.run(base_query, search_term=term)
+                blogs = []
+                for record in data:
+                    blog = {
+                        "name": record["name"],
+                        "url": record["url"],
+                        "publish_date": record["publish_date"],
+                        "expire_date": record["expire_date"],
+                        "category": record["category"],
+                        "region": record["region"],
+                        "relevance": record["relevance"],
+                        "target_audience": record["target_audience"]
+                    }
+                    # If target audience has multiple values, join them into a comma-separated string
+                    if isinstance(blog["target_audience"], list) and len(blog["target_audience"]) > 1:
+                        blog["target_audience"] = ", ".join(blog["target_audience"])
+                    blogs.append(blog)
+                all_blogs.extend(blogs)
+ 
+            return render_template('index.html', blogs=all_blogs)
+ 
+        except Exception as e:
+            print("Error:", e)  # Debugging: Print exception
+            return "An error occurred while processing your request."
+ 
     else:
         # If no search term is provided, display all blogs
         query = """
@@ -59,12 +63,10 @@ def index():
         MATCH (b)-[:BELONGS_TO_REGION]->(region:Region)
         MATCH (b)-[:HAS_RELEVANCE]->(relevance:Relevance)
         MATCH (b)-[:TARGETS]->(target:TargetAudience)
-        RETURN b.name AS name, b.url AS url, category.name AS category, b.publish_date AS publish_date,
-                b.expire_date AS expire_date, region.name AS region, relevance.name AS relevance,
-                collect(target.name) AS target_audience
+        RETURN b.name AS name, b.url AS url, category.name AS category, b.publish_date AS publish_date, b.expire_date AS expire_date, region.name AS region, relevance.name AS relevance, collect(target.name) AS target_audience
         """
         data = session.run(query)
-
+ 
         # Convert Neo4j result to a list of dictionaries
         blogs = []
         for record in data:
@@ -78,16 +80,12 @@ def index():
                 "relevance": record["relevance"],
                 "target_audience": record["target_audience"]
             }
-
             # If target audience has multiple values, join them into a comma-separated string
             if isinstance(blog["target_audience"], list) and len(blog["target_audience"]) > 1:
                 blog["target_audience"] = ", ".join(blog["target_audience"])
-
             blogs.append(blog)
-
-        blogs.sort(key=lambda x: x["name"])
-
+ 
         return render_template('index.html', blogs=blogs)
-
+ 
 if __name__ == '__main__':
-  app.run(debug=True, port=7474)
+    app.run(debug=True, port=7474)
