@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog Search</title>
+    <style>
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-gap: 20px;
+        }
+        .grid-item {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Blog Search</h1>
+    <form action="/" method="post">
+        <label for="search_term">Search Term:</label>
+        <input type="text" id="search_term" name="search_term">
+        <button type="submit">Search</button>
+    </form>
+    <div class="grid-container">
+        {% for blog in blogs %}
+        <div class="grid-item">
+            <h2>{{ blog.name }}</h2>
+            <p><strong>URL:</strong> {{ blog.url }}</p>
+            <p><strong>Category:</strong> {{ blog.category }}</p>
+            <p><strong>Publish Date:</strong> {{ blog.publish_date }}</p>
+            <p><strong>Expire Date:</strong> {{ blog.expire_date }}</p>
+            <p><strong>Region:</strong> {{ blog.region }}</p>
+            <p><strong>Relevance:</strong> {{ blog.relevance }}</p>
+            <p><strong>Target Audience:</strong> {{ blog.target_audience }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
