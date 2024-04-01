@@ -46,7 +46,6 @@ def index():
 
             blogs.append(blog)
 
-        # Pass the blogs data to the HTML template
         return render_template('index.html', blogs=blogs)
     else:
         # If no search term is provided, display all blogs
@@ -81,8 +80,7 @@ def index():
 
             blogs.append(blog)
 
-        # Pass the blogs data to the HTML template
         return render_template('index.html', blogs=blogs)
 
 if __name__ == '__main__':
-  app.run(debug=True)
+  app.run(debug=True, port=7474)
